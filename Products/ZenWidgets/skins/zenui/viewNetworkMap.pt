@@ -85,6 +85,5 @@
             //so.write("netmapcontainer");
         </script>
     </tal:block>
-
 </tal:block>
 

@@ -1,0 +1,13 @@
+{
+	"nodes":[
+		{"id":"10.171.54.0", "prop":"10.171.54.0", "icon":"/zport/dmd/img/icons/network.png", "color":"#cccccc"},
+		{"id":"perf-target-4", "prop":"perf-target-4", "icon":"/zport/dmd/img/icons/server-linux.png", "color":"#00ff00"},
+		{"id":"opensolaris", "prop":"opensolaris", "icon":"/zport/dmd/img/icons/server.png", "color":"#00ff00"},
+		{"id":"test-rhel6.zenoss.loc", "prop":"test-rhel6.zenoss.loc", "icon":"/zport/dmd/img/icons/server-linux.png", "color":"#ffd700"}
+	], 
+	"links":[
+		{"source":"10.171.54.0", "target":"perf-target-4"},
+		{"source":"10.171.54.0", "target":"opensolaris"},
+		{"source":"10.171.54.0", "target":"test-rhel6.zenoss.loc"}
+	]
+}
