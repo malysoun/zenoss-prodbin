@@ -41,6 +41,42 @@ class IRelationship(interface.Interface):
     """
     Marker interface.
     """
+    def __call__():
+        """Return the contents of this relation."""
+
+    def getId():
+        pass
+
+    def hasobject(obj):
+        """Does this relationship relate to obj."""
+
+    def addRelation(obj):
+        """Form a bi-directional relation between self and obj."""
+
+    def removeRelation(obj=None, suppress_events=False):
+        """remove an object from a relationship"""
+
+    def remoteType():
+        """Return the type of the remote end of our relationship."""
+
+    def remoteTypeName():
+        """Return the type of the remote end of our relationship."""
+
+    def remoteClass():
+        """Return the class at the remote end of our relationship."""
+
+    def remoteName():
+        """Return the name at the remote end of our relationship."""
+
+    def cb_isCopyable():
+        """Don't let relationships move off their managers"""
+
+    def cb_isMoveable():
+        """Don't let relationships move off their managers"""
+
+    def checkRelation(repair=False):
+        """Check to make sure that relationship bidirectionality is ok."""
+
 
 class RelationshipBase(PrimaryPathManager):
     """
@@ -133,19 +169,6 @@ class RelationshipBase(PrimaryPathManager):
         """Return the name at the remote end of our relationship."""
         schema = self.__primary_parent__.lookupSchema(self.id)
         return schema.remoteName
-
-
-    def getPrimaryParent(self):
-        """Return our parent object by our primary path"""
-        return self.__primary_parent__.primaryAq()
-
-
-    def getRelationshipManagerClass(self):
-        """
-        Return the local class of this relationship. For all relationshps
-        this is the class of our __primary_parent___.
-        """
-        return self.__primary_parent__.__class__
 
 
     def cb_isCopyable(self):
