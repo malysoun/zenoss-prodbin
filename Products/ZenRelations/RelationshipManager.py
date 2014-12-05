@@ -55,7 +55,7 @@ addRelationshipManager = DTMLFile('dtml/addRelationshipManager',globals())
 
 class RelationshipManager(PrimaryPathObjectManager, ZenPropertyManager):
     """
-    RelationshipManger is an ObjectManager like class that can contain
+    RelationshipManager is an ObjectManager like class that can contain
     relationships (in fact relationships can only be added to a 
     RelationshipManager).
 
@@ -222,7 +222,8 @@ class RelationshipManager(PrimaryPathObjectManager, ZenPropertyManager):
         for name, schema in self._relations:
             if name not in relnames:
                 self._setObject(name, schema.createRelation(name))
-            if name in relnames: relnames.remove(name)
+            if name in relnames:
+                relnames.remove(name)
         for rname in relnames:
             self._delObject(rname)
 
