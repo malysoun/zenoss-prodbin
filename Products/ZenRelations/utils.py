@@ -8,6 +8,17 @@
 ##############################################################################
 
 from Exceptions import ZenImportError
+from decorator import decorator
+
+
+@decorator
+def memoize(f, *args, **kwargs):
+    sig = repr((args, kwargs))
+    cache = f._m_cache = getattr(f, '_m_cache', {})
+    if sig not in cache:
+        cache[sig] = f(*args, **kwargs)
+    return cache[sig]
+
 
 def importClass(classpath, baseModule=None):
     """lookup a class by its path use baseModule path if passed"""

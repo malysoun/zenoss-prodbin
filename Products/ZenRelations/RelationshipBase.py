@@ -133,4 +133,5 @@ class RelationshipBase(PrimaryPathManager):
         """Don't let relationships move off their managers"""
         return 0
 
+
 InitializeClass(RelationshipBase)
