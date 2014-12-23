@@ -1,46 +1,39 @@
 ##############################################################################
 # 
-# Copyright (C) Zenoss, Inc. 2007, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2007, 2014-2015 all rights reserved.
 # 
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
 # 
 ##############################################################################
 
-
-__doc__="""$Id: ToManyRelationship.py,v 1.48 2003/11/12 22:05:48 edahl Exp $"""
-
-__version__ = "$Revision: 1.48 $"[11:-2]
-
-import sys
 import logging
+
 log = logging.getLogger("zen.Relations")
 
 from Globals import DTMLFile
 from Globals import InitializeClass
 from AccessControl import ClassSecurityInfo
-from Acquisition import aq_base
-
+import itertools
 from zExceptions import NotFound
 from Products.ZenUtils.Utils import getObjByPath, unused
-from Products.ZenUtils.tbdetail import log_tb
 
 from ToManyRelationshipBase import ToManyRelationshipBase
 
 from Products.ZenRelations.Exceptions import *
+from utils import doSelect, doDelete, doInsert
 
-from persistent.list import PersistentList
 
 def manage_addToManyRelationship(context, id, REQUEST=None):
     """factory for ToManyRelationship"""
-    rel =  ToManyRelationship(id)
+    rel = ToManyRelationship(id)
     context._setObject(rel.id, rel)
     if REQUEST:
-        REQUEST['RESPONSE'].redirect(context.absolute_url()+'/manage_main')
+        REQUEST['RESPONSE'].redirect(context.absolute_url() + '/manage_main')
     return rel.id
 
 
-addToManyRelationship = DTMLFile('dtml/addToManyRelationship',globals())
+addToManyRelationship = DTMLFile('dtml/addToManyRelationship', globals())
 
 
 class ToManyRelationship(ToManyRelationshipBase):
@@ -54,7 +47,7 @@ class ToManyRelationship(ToManyRelationshipBase):
     Related references are maintained in a list.
     """
 
-    __pychecker__='no-override'
+    __pychecker__ = 'no-override'
 
     meta_type = "ToManyRelationship"
 
@@ -63,75 +56,95 @@ class ToManyRelationship(ToManyRelationshipBase):
     def __init__(self, id):
         """ToManyRelationships use an array to store related objects"""
         self.id = id
-        self._objects = PersistentList()
         self._count = 0
 
     def __call__(self):
-        """when we are called return our related object in our aq context"""
+        """when we are called return our related objects in our aq context"""
         return self.objectValuesAll()
 
-    def hasobject(self, obj):
-        "check to see if we have this object"
-        try:
-            idx = self._objects.index(obj)
-            return self._objects[idx]
-        except ValueError:
-            return None
+    def setCount(self):
+        self._count = len(self.getRemoteUids())
 
+    def getRemoteUids(self):
+        myId = self.__primary_parent__.getPrimaryId()
+        def get(connection, cursor):
+            sql = "SELECT remote_uid from relations where uid=%s and name=%s"
+            cursor.execute(sql, (myId, self.id))
+            return cursor.fetchall()
+        return doSelect(get)
+
+    def hasobject(self, obj):
+        """does this relation point to the object passed"""
+        #return self.obj == obj
+        myId = self.__primary_parent__.getPrimaryId()
+        uid = obj.getPrimaryId()
+
+        def get(connection, cursor):
+            sql = "SELECT COUNT(*) FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
+            return bool(cursor.execute(sql, (myId, self.id, uid)).fetchone())
+        return doSelect(get)
 
     def manage_pasteObjects(self, cb_copy_data=None, REQUEST=None):
         """ToManyRelationships link instead of pasting"""
         return self.manage_linkObjects(cb_copy_data=cb_copy_data,
-                                        REQUEST=REQUEST)
+                                       REQUEST=REQUEST)
 
+    def _add(self, obj):
+        """add an object to a relationship.
+        if a relationship already exists, error"""
+        myId = self.__primary_parent__.getPrimaryId()
+        uid = obj.getPrimaryId()
 
-    def _add(self,obj):
-        """add an object to one side of this toMany relationship"""
-        if obj in self._objects: raise RelationshipExistsError
-        self._objects.append(aq_base(obj))
-        self.__primary_parent__._p_changed = True
-        self.setCount()
+        #if obj == self.obj: raise RelationshipExistsError
+        if self.hasobject(obj):
+            raise RelationshipExistsError
 
+        #self._objects.append(aq_base(obj))
+        #self.__primary_parent__._p_changed = True
+        def put(connection, cursor):
+            sql = "INSERT INTO relations (uid, name, remote_uid) values (%s, %s, %s)"
+            cursor.executemany(sql, ((myId, self.id, uid),
+                                     (uid, self.remoteName(), myId)))
+        doInsert(put)
+        self._count = None
+
+    def _dbRemoveByUid(self, uidsToRemove=()):
+        myId = self.__primary_parent__.getPrimaryId()
+
+        def delete(connection, cursor):
+            sql = "DELETE FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
+            cursor.executemany(sql,
+                               itertools.chain(
+                                   ((myId, self.id, uid) for uid in uidsToRemove),
+                                   ((uid, self.remoteName(), myId) for uid in uidsToRemove)
+                               ))
+
+        self._count = None
+        return doDelete(delete)
 
     def _remove(self, obj=None, suppress_events=False):
-        """remove object from our side of a relationship"""
-        if obj:
-            try:
-                self._objects.remove(obj)
-            except ValueError:
-                raise ObjectNotFound(
-                    "object %s not found on relation %s" % (
-                        obj.getPrimaryId(), self.getPrimaryId()))
-        else:
-            self._objects = PersistentList()
-        self.__primary_parent__._p_changed = True
-        self.setCount()
+        #find our current objects
+        myId = self.__primary_parent__.getPrimaryId()
+        uid = obj.getPrimaryId()
 
+        if obj:
+            if not self.hasobject(obj):
+                raise ObjectNotFound("object %s was not found on relation %s" %
+                                     (uid, self))
+            uidsToRemove = [uid]
+        else:
+            uidsToRemove = self.getRemoteUids()
+
+        if uidsToRemove:
+            self._dbRemoveByUid(uidsToRemove)
 
     def _remoteRemove(self, obj=None):
-        """remove an object from the far side of this relationship
-        if no object is passed in remove all objects"""
-        if obj:
-            if obj not in self._objects:
-                raise ObjectNotFound("object %s not found on relation %s" % (
-                            obj.getPrimaryId(), self.getPrimaryId()))
-            objs = [obj]
-        else: objs = self.objectValuesAll()
-        remoteName = self.remoteName()
-        for obj in objs:
-            rel = getattr(obj, remoteName)
-            try:
-                rel._remove(self.__primary_parent__)
-            except ObjectNotFound:
-                message = log_tb(sys.exc_info())
-                log.error('Remote remove failed. Run "zenchkrels -r -x1". ' + message)
+        raise NotImplementedError
 
-
-    def _setObject(self,id,object,roles=None,user=None,set_owner=1):
+    def _setObject(self, id, object, roles=None, user=None, set_owner=1):
         """Set and object onto a ToMany by calling addRelation"""
         unused(id, roles, user, set_owner)
         self.addRelation(object)
-
 
     def _delObject(self, id, dp=1, suppress_events=False):
         """
@@ -141,23 +154,22 @@ class ToManyRelationship(ToManyRelationshipBase):
         obj = getObjByPath(self, id)
         self.removeRelation(obj, suppress_events=suppress_events)
 
-
     def _getOb(self, id, default=zenmarker):
         """
         Return object based on its primaryId. plain id will not work!!!
         """
-        objs = filter(lambda x: x.getPrimaryId() == id, self._objects)
-        if len(objs) == 1: return objs[0].__of__(self)
-        if default != zenmarker: return default
+        uids = self.getRemoteUids()
+        if id in uids:
+            return getObjByPath(id).__of__(self)
+        elif default != zenmarker:
+            return default
         raise AttributeError(id)
-
 
     def objectIdsAll(self):
         """
         Return object ids as their absolute primaryId.
         """
-        return [obj.getPrimaryId() for obj in self._objects]
-
+        return self.getRemoteUids()
 
     def objectIds(self, spec=None):
         """
@@ -167,17 +179,15 @@ class ToManyRelationship(ToManyRelationshipBase):
         unused(spec)
         return []
 
-
     security.declareProtected('View', 'objectValuesAll')
+
     def objectValuesAll(self):
         """return all related object values"""
         return list(self.objectValuesGen())
 
-
     def objectValuesGen(self):
         """Generator that returns all related objects."""
-        return (obj.__of__(self) for obj in self._objects)
-
+        return (getObjByPath(uid).__of__(self) for uid in self.getRemoteUids())
 
     def objectValues(self, spec=None):
         """
@@ -187,13 +197,11 @@ class ToManyRelationship(ToManyRelationshipBase):
         unused(spec)
         return []
 
-
     def objectItemsAll(self):
         """
         Return object items where key is primaryId.
         """
-        return [(obj.getPrimaryId(), obj) for obj in self._objects]
-
+        return [(uid, getObjByPath(uid)) for uid in self.getRemoteUids()]
 
     def objectItems(self, spec=None):
         """
@@ -202,7 +210,6 @@ class ToManyRelationship(ToManyRelationshipBase):
         """
         unused(spec)
         return []
-
 
     def _getCopy(self, container):
         """
@@ -218,8 +225,7 @@ class ToManyRelationship(ToManyRelationshipBase):
                 rel.addRelation(robj)
         return rel
 
-
-    def exportXml(self,ofile,ignorerels=[]):
+    def exportXml(self, ofile, ignorerels=[]):
         """Return an xml representation of a ToManyRelationship
         <tomany id='interfaces'>
             <link>/Systems/OOL/Mail</link>
@@ -231,16 +237,9 @@ class ToManyRelationship(ToManyRelationshipBase):
             ofile.write("<link objid='%s'/>\n" % id)
         ofile.write("</tomany>\n")
 
-
     def all_meta_types(self, interfaces=None):
         """Return empty list not allowed to add objects to a ToManyRelation"""
         return []
-
-
-    def convertToPersistentList(self):
-        self._objects = PersistentList(self._objects)
-        self.setCount()
-
 
     def checkObjectRelation(self, obj, remoteName, parentObject, repair):
         deleted = False
@@ -249,8 +248,8 @@ class ToManyRelationship(ToManyRelationshipBase):
             getObjByPath(self, ppath)
         except (KeyError, NotFound):
             log.error("object %s in relation %s has been deleted " \
-                         "from its primary path",
-                         obj.getPrimaryId(), self.getPrimaryId())
+                      "from its primary path",
+                      obj.getPrimaryId(), self.getPrimaryId())
             if repair:
                 log.warn("removing object %s from relation %s",
                          obj.getPrimaryId(), self.getPrimaryId())
@@ -262,13 +261,12 @@ class ToManyRelationship(ToManyRelationshipBase):
             rrel = getattr(obj, remoteName)
             if not rrel.hasobject(parentObject):
                 log.error("remote relation %s doesn't point back to %s",
-                                rrel.getPrimaryId(), self.getPrimaryId())
+                          rrel.getPrimaryId(), self.getPrimaryId())
                 if repair:
                     log.warn("reconnecting relation %s to relation %s",
-                            rrel.getPrimaryId(),self.getPrimaryId())
+                             rrel.getPrimaryId(), self.getPrimaryId())
                     rrel._add(parentObject)
         return deleted
-
 
     def checkRelation(self, repair=False):
         """Check to make sure that relationship bidirectionality is ok.
@@ -290,15 +288,15 @@ class ToManyRelationship(ToManyRelationshipBase):
             c = keycount.setdefault(key, 0)
             c += 1
             keycount[key] = c
-        # Remove duplicate objects or objects that don't exist
+            # Remove duplicate objects or objects that don't exist
         for key, val in keycount.items():
             if val > 1:
                 log.critical("obj:%s rel:%s dup found obj:%s count:%s",
                              self.getPrimaryId(), self.id, key, val)
                 if repair:
                     log.critical("repair key %s", key)
-                    self._objects = [ o for o in self._objects \
-                                        if o.getPrimaryId() != key ]
+                    self._objects = [o for o in self._objects \
+                                     if o.getPrimaryId() != key]
                     try:
                         obj = self.getObjByPath(key)
                         self._objects.append(obj)

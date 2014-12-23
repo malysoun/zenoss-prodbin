@@ -65,7 +65,6 @@ class ToManyRelationshipBase(
             self.setCount()
         return self._count
 
-
     def findObjectsById(self, partid):
         """Return a list of objects by running find on their id"""
         objects = []
@@ -74,6 +73,11 @@ class ToManyRelationshipBase(
                 objects.append(obj)
         return objects
 
+    def objectItemsAll(self):
+        """
+        Return object items where key is primaryId.
+        """
+        raise NotImplementedError
 
     def _delObject(self, id, dp=1, suppress_events=False):
         """Emulate ObjectManager deletetion."""
@@ -87,20 +91,15 @@ class ToManyRelationshipBase(
         self.removeRelation(obj, suppress_events)
         obj.__primary_parent__ = None
 
-
     def _setOb(self, id, obj):
         """don't use attributes in relations"""
         unused(id)
         unused(obj)
-        if True:
-            raise NotImplementedError
-
+        raise NotImplementedError
 
     def _delOb(self, id):
         """don't use attributes in relations"""
-        if True:
-            raise NotImplementedError
-
+        raise NotImplementedError
 
     def _getOb(self, id, default=zenmarker):
         """
@@ -109,9 +108,7 @@ class ToManyRelationshipBase(
         raise AttributeError
         """
         unused(default)
-        if True:
-            raise NotImplementedError
-
+        raise NotImplementedError
 
     def manage_workspace(self, REQUEST):
         """if this has been called on us return our workspace

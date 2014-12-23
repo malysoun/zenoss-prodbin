@@ -1,18 +1,17 @@
 ##############################################################################
 # 
-# Copyright (C) Zenoss, Inc. 2007, all rights reserved.
+# Copyright (C) Zenoss, Inc. 2007, 2014-2015 all rights reserved.
 # 
 # This content is made available according to terms specified in
 # License.zenoss under the directory where your Zenoss product is installed.
 # 
 ##############################################################################
-
+from Products.ZenRelations import ToManyRelationship
 
 __doc__ = """ToManyContRelationship
 A to-many container relationship
 """
 
-import sys
 import logging
 log = logging.getLogger("zen.Relations")
 
@@ -30,27 +29,23 @@ from zope.container.contained import ObjectRemovedEvent
 
 from BTrees.OOBTree import OOBTree
 
-from ToManyRelationshipBase import ToManyRelationshipBase
-
-from Products.ZenRelations.Exceptions import RelationshipExistsError, ObjectNotFound
 from Exceptions import zenmarker
 
 from Products.ZenUtils.Utils import unused
-from Products.ZenUtils.tbdetail import log_tb
 
 def manage_addToManyContRelationship(context, id, REQUEST=None):
     """factory for ToManyRelationship"""
-    rel =  ToManyContRelationship(id)
+    rel = ToManyContRelationship(id)
     context._setObject(rel.id, rel)
     if REQUEST:
         REQUEST['RESPONSE'].redirect(context.absolute_url()+'/manage_main')
     return rel.id
 
 
-addToManyContRelationship = DTMLFile('dtml/addToManyContRelationship',globals())
+addToManyContRelationship = DTMLFile('dtml/addToManyContRelationship', globals())
 
 
-class ToManyContRelationship(ToManyRelationshipBase):
+class ToManyContRelationship(ToManyRelationship):
     """
     ToManyContRelationship is the ToMany side of a realtionship that
     contains its related objects (like the normal Zope ObjectManager)
@@ -63,9 +58,14 @@ class ToManyContRelationship(ToManyRelationshipBase):
 
     def __init__(self, id):
         """set our instance values"""
-        self.id = id
+        super(ToManyContRelationship, self).__init__(id)
         self._objects = OOBTree()
 
+    def setCount(self):
+        super(ToManyRelationship, self).setCount()
+        if self._count != len(self._objects):
+            #Something has gone wrong. Sync with the database now!
+            self.checkRelation(repair=True)
 
     def _safeOfObjects(self):
         """
@@ -73,7 +73,7 @@ class ToManyContRelationship(ToManyRelationshipBase):
         causing imports to fail.
         """
         objs = []
-        for ob in self._objects.values():
+        for ob in self.objectValues():
             try:
                 objs.append(ob.__of__(self))
             except AttributeError:
@@ -84,40 +84,34 @@ class ToManyContRelationship(ToManyRelationshipBase):
         """when we are called return our related object in our aq context"""
         return self._safeOfObjects()
 
-
     def __getattr__(self, name):
         """look in the two object stores for related objects"""
         if '_objects' in self.__dict__:
             objects = self._objects
-            if objects.has_key(name): return objects[name]
-        raise AttributeError( "Unable to find the attribute '%s'" % name )
-
+            if name in objects:
+                return objects[name]
+        raise AttributeError("Unable to find the attribute '%s'" % name)
 
     def __hasattr__(self, name):
         """check to see if we have an object by an id
         this will fail if passed a short id and object is stored
         with fullid (ie: it is related not contained)
         use hasobject to get around this issue"""
-        return self._objects.has_key(name)
-
-
-    def hasobject(self, obj):
-        "check to see if we have this object"
-        return self._objects.get(obj.id) == obj
-
+        parentId = self.__primary_parent__.getPrimaryId()
+        uids = self.getRemoteUids()
+        return '/'.join((parentId, self.id, name)) in uids
 
     def addRelation(self, obj):
         """Override base to run manage_afterAdd like ObjectManager"""
-        if self._objects.has_key(obj.getId()):
+        if self.hasobject(obj):
             log.debug("obj %s already exists on %s", obj.getPrimaryId(),
-                        self.getPrimaryId())
+                      self.getPrimaryId())
 
         notify(ObjectWillBeAddedEvent(obj, self, obj.getId()))
-        ToManyRelationshipBase.addRelation(self, obj)
+        super(ToManyContRelationship, self).addRelation(self, obj)
         obj = obj.__of__(self)
         o = self._getOb(obj.id)
-        notify(ObjectAddedEvent(o, self, obj.getId()))
-
+        notify(ObjectAddedEvent(o, self, o.getId()))
 
     def _setObject(self,id,object,roles=None,user=None,set_owner=1):
         """ObjectManager interface to add contained object."""
@@ -125,7 +119,6 @@ class ToManyContRelationship(ToManyRelationshipBase):
         object.__primary_parent__ = aq_base(self)
         self.addRelation(object)
         return object.getId()
-
 
     def manage_afterAdd(self, item, container):
         # Don't do recursion anymore, a subscriber does that.
@@ -142,121 +135,75 @@ class ToManyContRelationship(ToManyRelationshipBase):
         pass
     manage_beforeDelete.__five_method__ = True
 
-    def _add(self,obj):
-        """add an object to one side of a ToManyContRelationship.
-        """
+    def _add(self, obj):
+        """add an object to a relationship.
+        if a relationship already exists, error"""
         id = obj.id
-        if self._objects.has_key(id):
-            raise RelationshipExistsError
-        v=checkValidId(self, id)
-        if v is not None: id=v
-        self._objects[id] = aq_base(obj)
-        obj = aq_base(obj).__of__(self)
-        self.setCount()
+        checkValidId(self, id)
 
+        super(ToManyContRelationship, self)._add()
+
+        self._objects[id] = aq_base(obj)
 
     def _remove(self, obj=None, suppress_events=False):
         """remove object from our side of a relationship"""
-        if obj: objs = [obj]
-        else: objs = self.objectValuesAll()
+        objs = [obj] if obj else self.objectValuesAll()
         if not suppress_events:
             for robj in objs:
                 notify(ObjectWillBeRemovedEvent(robj, self, robj.getId()))
+
+        super(ToManyContRelationship, self)._remove(obj, suppress_events)
+
         if obj:
-            id = obj.id
-            if not self._objects.has_key(id):
-                raise ObjectNotFound(
-                    "object %s not found on %s" % (
-                    obj.getPrimaryId(), self.getPrimaryId()))
             del self._objects[id]
         else:
             self._objects = OOBTree()
             self.__primary_parent__._p_changed = True
+
         if not suppress_events:
             for robj in objs:
                 notify(ObjectRemovedEvent(robj, self, robj.getId()))
-        self.setCount()
-
-
-    def _remoteRemove(self, obj=None):
-        """remove an object from the far side of this relationship
-        if no object is passed in remove all objects"""
-        if obj:
-            if not self._objects.has_key(obj.id):
-                raise ObjectNotFound("object %s not found on %s" % (
-                    obj.getPrimaryId(), self.getPrimaryId()))
-            objs = [obj]
-        else: objs = self.objectValuesAll()
-        remoteName = self.remoteName()
-        for obj in objs:
-            rel = getattr(obj, remoteName)
-            try:
-                rel._remove(self.__primary_parent__)
-            except ObjectNotFound:
-                message = log_tb(sys.exc_info())
-                log.error('Remote remove failed. Run "zenchkrels -r -x1". ' + message)
-                continue
-
 
     def _getOb(self, id, default=zenmarker):
         """look up in our local store and wrap in our aq_chain"""
-        if self._objects.has_key(id):
+        if self.__hasattr__(id):
             return self._objects[id].__of__(self)
         elif default == zenmarker:
-            raise AttributeError( "Unable to find %s" % id )
+            raise AttributeError("Unable to find %s" % id)
         return default
-
 
     security.declareProtected('View', 'objectIds')
     def objectIds(self, spec=None):
         """only return contained objects"""
-        if spec:
-            if isinstance(spec,basestring): spec=[spec]
-            return [obj.id for obj in self._objects.values() \
-                        if obj.meta_type in spec]
-        return [ k for k in self._objects.keys() ]
-    objectIdsAll = objectIds
+        if not spec:
+            return self.objectIdsAll()
+        return [obj.id for obj in self.objectValues(spec)]
 
+    security.declareProtected('View', 'objectIdsAll')
+    def objectIdsAll(self):
+        """only return contained objects"""
+        return [uid.rsplit('/', 1)[1] for uid in self.getRemoteUids()]
 
     security.declareProtected('View', 'objectValues')
     def objectValues(self, spec=None):
         """override to only return owned objects for many to many rel"""
+        specFilter = None
         if spec:
-            if isinstance(spec,basestring): spec=[spec]
-            return [ob.__of__(self) for ob in self._objects.values() \
-                        if ob.meta_type in spec]
-        return self._safeOfObjects()
+            if isinstance(spec, basestring):
+                spec = [spec]
+            specFilter = lambda x: x.meta_type in spec
+        return filter(specFilter, self.objectValuesGen())
+
     security.declareProtected('View', 'objectValuesAll')
     objectValuesAll = objectValues
 
-
     def objectValuesGen(self):
         """Generator that returns all related objects."""
-        return (obj.__of__(self) for obj in self._objects.values())
-
+        return (self._objects[id].__of__(self) for id in self.objectIdsAll())
 
     def objectItems(self, spec=None):
-        """over ride to only return owned objects for many to many rel"""
-        if spec:
-            if isinstance(spec,basestring): spec=[spec]
-            return [(key,value.__of__(self)) \
-                for (key,value) in self._objects.items() \
-                    if value.meta_type in spec]
-        return [(key,value.__of__(self)) \
-                    for (key,value) in self._objects.items()]
+        return [(obj.getPrimaryId(), obj) for obj in self.objectValues()]
     objectItemsAll = objectItems
-
-
-#FIXME - need to make this work
-#    def all_meta_types(self, interfaces=None):
-#        mts = []
-#        for mt in ToManyRelationshipBase.all_meta_types(self, interfaces):
-#            if (mt.has_key('instance') and mt['instance']):
-#                for cl in self.sub_classes:
-#                    if checkClass(mt['instance'], cl):
-#                        mts.append(mt)
-#        return mts
-
 
     def _getCopy(self, container):
         """
@@ -277,12 +224,8 @@ class ToManyContRelationship(ToManyRelationshipBase):
         """
         Is this a valid id for this container?
         """
-        try:
-            checkValidId(self, id)
-        except:
-            raise
-        else:
-            return True
+        checkValidId(self, id)
+        return True
 
     def exportXml(self, ofile, ignorerels=[]):
         """Return an xml representation of a ToManyContRelationship
@@ -322,18 +265,17 @@ class ToManyContRelationship(ToManyRelationshipBase):
                     continue
                 else:
                     msg = "%s object '%s' relation '%s' missing remote relation '%s'" % (
-                             path, obj, self.id, remoteName)
+                        path, obj, self.id, remoteName)
                     raise AttributeError(msg)
 
             rrel = getattr(obj, remoteName)
             if not rrel.hasobject(parentObject):
                 log.error("remote relation %s doesn't point back to %s",
-                                rrel.getPrimaryId(), self.getPrimaryId())
+                          rrel.getPrimaryId(), self.getPrimaryId())
                 if repair:
                     log.warn("reconnecting relation %s to relation %s",
-                            rrel.getPrimaryId(),self.getPrimaryId())
+                             rrel.getPrimaryId(),self.getPrimaryId())
                     rrel._add(parentObject)
-
 
 
 InitializeClass(ToManyContRelationship)

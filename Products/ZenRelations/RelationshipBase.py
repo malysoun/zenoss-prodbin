@@ -8,14 +8,10 @@
 ##############################################################################
 
 
-__doc__="""RelationshipBase
+__doc__ = """RelationshipBase
 
 RelationshipBase is the base class for RelationshipManager
-and ToManyRelationship.
-
-$Id: RelationshipBase.py,v 1.26 2003/10/03 16:16:01 edahl Exp $"""
-
-__version__ = "$Revision: 1.26 $"[11:-2]
+and ToManyRelationship."""
 
 import logging
 log = logging.getLogger("zen.Relations")
@@ -24,18 +20,12 @@ from Globals import InitializeClass
 from Acquisition import aq_base
 from zope import interface
 
+from Products.Zuul.decorators import memoize
+from Products.Zuul.utils import safe_hasattr
 from Products.ZenRelations.Exceptions import *
 from Products.ZenRelations.utils import importClass
 
 from PrimaryPathObjectManager import PrimaryPathManager
-
-from zope.event import notify
-from OFS.event import ObjectWillBeAddedEvent
-from OFS.event import ObjectWillBeRemovedEvent
-from zope.container.contained import dispatchToSublocations
-from zope.container.contained import ObjectAddedEvent
-from zope.container.contained import ObjectRemovedEvent
-from zope.container.contained import ContainerModifiedEvent
 
 class IRelationship(interface.Interface):
     """
@@ -78,113 +68,74 @@ class IRelationship(interface.Interface):
         """Check to make sure that relationship bidirectionality is ok."""
 
 
+
 class RelationshipBase(PrimaryPathManager):
     """
     Abstract base class for all relationship classes.
     """
-    interface.implements(IRelationship)
 
     _operation = -1 # if a Relationship's are only deleted
 
-    def __call__(self):
-        """Return the contents of this relation."""
-        raise NotImplementedError
-
-    
     def getId(self):
         return self.id
 
-
-    def hasobject(self, obj):
-        """Does this relationship relate to obj."""
-        raise NotImplementedError
-
-
-    def _add(self, obj):
-        """Add object to local side of relationship."""
-        raise NotImplementedError 
-
-
-    def _remove(self,obj=None, suppress_events=False):
-        """
-        Remove object from local side of relationship. 
-        If obj=None remove all object in the relationship
-        """
-        raise NotImplementedError 
-
-
-    def _remoteRemove(self, obj=None):
-        """Remove obj form the remote side of this relationship."""
-        raise NotImplementedError 
-
+    @property
+    def _schema(self):
+        return self.__primary_parent__.lookupSchema(self.id)
 
     def addRelation(self, obj):
         """Form a bi-directional relation between self and obj."""
-        if obj is None: raise ZenRelationsError("Can not add None to relation")
+        if obj is None:
+            raise ZenRelationsError("Can not add None to relation")
         if not isinstance(obj, self.remoteClass()):
             raise ZenSchemaError("%s restricted to class %s. %s is class %s" %
-                (self.id, self.remoteClass().__name__, 
-                 obj.id, obj.__class__.__name__))
+                                 (self.id, self.remoteClass().__name__,
+                                  obj.id, obj.__class__.__name__))
+
+        # make sure remote rel is on this obj
+        if not safe_hasattr(aq_base(obj), self.remoteName()):
+            raise ZenRelationsError("Remote object %s does not have reciprocal relationship %s" %
+                                    (obj.getPrimaryId(), self.remoteName()))
+
         try:
-            self._add(obj)
-            rname = self.remoteName()
-            # make sure remote rel is on this obj
-            getattr(aq_base(obj), rname) 
-            remoteRel = getattr(obj, self.remoteName())
-            remoteRel._add(self.__primary_parent__)
+            self._add(obj.getPrimaryId())
         except RelationshipExistsError:
             log.debug("obj %s already exists on %s", obj.getPrimaryId(),
-                        self.getPrimaryId())
+                      self.getPrimaryId())
 
 
     def removeRelation(self, obj=None, suppress_events=False):
         """remove an object from a relationship"""
-        self._remoteRemove(obj)
         self._remove(obj, suppress_events=suppress_events)
 
-
+    @memoize
     def remoteType(self):
         """Return the type of the remote end of our relationship."""
-        schema = self.__primary_parent__.lookupSchema(self.id)
-        return schema.remoteType
+        return self._schema.remoteType
 
-
+    @memoize
     def remoteTypeName(self):
         """Return the type of the remote end of our relationship."""
-        schema = self.__primary_parent__.lookupSchema(self.id)
-        return schema.remoteType.__name__
+        return self._schema.remoteType.__name__
 
-
+    @memoize
     def remoteClass(self):
         """Return the class at the remote end of our relationship."""
-        classdef = getattr(aq_base(self), "_v_remoteClass", None)
-        if not classdef:
-            schema = self.__primary_parent__.lookupSchema(self.id)
-            classdef = importClass(schema.remoteClass)
-            self._v_remoteClass = classdef
-        return classdef
-
+        return importClass(self._schema.remoteClass)
 
     def remoteName(self):
         """Return the name at the remote end of our relationship."""
-        schema = self.__primary_parent__.lookupSchema(self.id)
-        return schema.remoteName
+        return self._schema.remoteName
 
 
     def cb_isCopyable(self):
-        """Don't let relationships move off their managers"""        
+        """Don't let relationships move off their managers"""
         return 0
-        
-    
+
+
     def cb_isMoveable(self):
-        """Don't let relationships move off their managers"""        
+        """Don't let relationships move off their managers"""
         return 0
-   
 
-    def checkRelation(self, repair=False):
-        """Check to make sure that relationship bidirectionality is ok.
-        """
-        return
 
-        
 InitializeClass(RelationshipBase)
