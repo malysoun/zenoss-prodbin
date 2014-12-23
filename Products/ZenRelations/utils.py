@@ -7,7 +7,6 @@
 # 
 ##############################################################################
 
-from Globals import DB
 from Exceptions import ZenImportError
 
 def importClass(classpath, baseModule=None):
@@ -69,12 +68,3 @@ class ZenRelationshipNameChooser(object):
             i += 1
             n = name + str(i) + suffix
         return str(n)
-
-
-def doUpdate(f):
-    return DB.storage._with_store(f)
-doInsert = doDelete = doUpdate
-
-
-def doSelect(f):
-    return DB.storage._with_load(f)

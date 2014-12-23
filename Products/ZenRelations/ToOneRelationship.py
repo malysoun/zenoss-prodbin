@@ -32,7 +32,7 @@ from zExceptions import NotFound
 from Products.ZenRelations.Exceptions import *
 from Products.ZenUtils.Utils import unused, getObjByPath
 from RelSchema import ToManyCont
-from utils import doSelect, doDelete, doInsert
+from RelationshipUtils import doSelect, doDelete, doInsert
 
 def manage_addToOneRelationship(context, id, REQUEST=None):
     """ToOneRelationship Factory"""

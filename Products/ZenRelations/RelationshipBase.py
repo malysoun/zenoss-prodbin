@@ -15,7 +15,7 @@ and ToManyRelationship."""
 
 import logging
 log = logging.getLogger("zen.Relations")
-  
+
 from Globals import InitializeClass
 from Acquisition import aq_base
 from zope import interface
@@ -68,7 +68,6 @@ class IRelationship(interface.Interface):
         """Check to make sure that relationship bidirectionality is ok."""
 
 
-
 class RelationshipBase(PrimaryPathManager):
     """
     Abstract base class for all relationship classes.
@@ -103,7 +102,6 @@ class RelationshipBase(PrimaryPathManager):
             log.debug("obj %s already exists on %s", obj.getPrimaryId(),
                       self.getPrimaryId())
 
-
     def removeRelation(self, obj=None, suppress_events=False):
         """remove an object from a relationship"""
         self._remove(obj, suppress_events=suppress_events)
@@ -127,15 +125,12 @@ class RelationshipBase(PrimaryPathManager):
         """Return the name at the remote end of our relationship."""
         return self._schema.remoteName
 
-
     def cb_isCopyable(self):
         """Don't let relationships move off their managers"""
         return 0
 
-
     def cb_isMoveable(self):
         """Don't let relationships move off their managers"""
         return 0
-
 
 InitializeClass(RelationshipBase)

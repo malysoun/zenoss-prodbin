@@ -21,7 +21,7 @@ from Products.ZenUtils.Utils import getObjByPath, unused
 from ToManyRelationshipBase import ToManyRelationshipBase
 
 from Products.ZenRelations.Exceptions import *
-from utils import doSelect, doDelete, doInsert
+from RelationshipUtils import doSelect, doDelete, doInsert
 
 
 def manage_addToManyRelationship(context, id, REQUEST=None):
