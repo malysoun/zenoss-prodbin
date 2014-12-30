@@ -31,7 +31,6 @@ from zope import interface
 from zExceptions import NotFound
 from Products.ZenRelations.Exceptions import *
 from Products.ZenUtils.Utils import unused, getObjByPath
-from RelSchema import ToManyCont
 from RelationshipUtils import doSelect, doDelete, doInsert
 
 def manage_addToOneRelationship(context, id, REQUEST=None):
@@ -199,7 +198,7 @@ class ToOneRelationship(RelationshipBase):
             /Monitors/Cricket/crk0.srv.hcvlny.cv.net
         </toone>"""
         obj = self()
-        if not obj or self.remoteType() == ToManyCont:
+        if not obj or self.remoteTypeName() == "ToManyCont":
             return
         ofile.write("<toone id='%s' objid='%s'/>\n" % (
             self.id, obj.getPrimaryId()))
