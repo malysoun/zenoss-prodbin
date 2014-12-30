@@ -134,6 +134,9 @@ class RelationshipBase(PrimaryPathManager):
         """Don't let relationships move off their managers"""
         return 0
 
+    def _remoteRemove(self, obj=None):
+        raise NotImplementedError
+
     def hasobject(self, obj):
         """does this relation point to the object passed"""
         myId = self.__primary_parent__.getPrimaryId()

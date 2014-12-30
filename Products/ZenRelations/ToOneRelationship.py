@@ -108,9 +108,6 @@ class ToOneRelationship(RelationshipBase):
                                          (uid, self.remoteName(), myId)))
             doDelete(delete)
 
-    def _remoteRemove(self, obj=None):
-        raise NotImplementedError
-
     security.declareProtected('View', 'getRelatedId')
 
     def getRelatedId(self):

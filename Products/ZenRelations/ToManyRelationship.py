@@ -127,9 +127,6 @@ class ToManyRelationship(ToManyRelationshipBase):
         if uidsToRemove:
             self._dbRemoveByUid(uidsToRemove)
 
-    def _remoteRemove(self, obj=None):
-        raise NotImplementedError
-
     def _setObject(self, id, object, roles=None, user=None, set_owner=1):
         """Set and object onto a ToMany by calling addRelation"""
         unused(id, roles, user, set_owner)
