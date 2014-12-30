@@ -67,6 +67,7 @@ def notifyZopeApplicationOpenedSubscribers(event):
         app = conn.root()['Application']
         transact(notify)(ZopeApplicationOpenedEvent(app))
     finally:
+        conn.abort(None)
         conn.close()
 
 def registerUUID(event):
