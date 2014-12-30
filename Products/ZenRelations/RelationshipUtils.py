@@ -8,7 +8,7 @@ from Products.ZenRelations.utils import memoize
 
 
 @memoize
-def _storeFunction(self):
+def _storeFunction():
     """
     Wrapper function to import DB at run-time
     """
@@ -18,7 +18,7 @@ def _storeFunction(self):
 
 
 @memoize
-def _loadFunction(self):
+def _loadFunction():
     """
     Wrapper function to import DB at run-time
     """
