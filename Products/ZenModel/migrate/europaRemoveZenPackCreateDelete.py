@@ -22,14 +22,14 @@ class EuropaRemoveZenPackCreateDelete(Migrate.Step):
 
     def cutover(self, dmd):
         menu = dmd.zenMenus._getOb('ZenPack_list', None)
-        for menuId in ('installZenPack', 'removeZenPack'):
-            if menu.zenMenuItems._getOb(menuId, None):
-                try:
-                    menu.zenMenuItems._delObject(menuId)
-                except Exception, e:
-                    log.error("Unable to remove menu %s" % menuId)
-                    log.exception(e)
-        pass
-    
+        if menu:
+            for menuId in ('installZenPack', 'removeZenPack'):
+                if menu.zenMenuItems._getOb(menuId, None):
+                    try:
+                        menu.zenMenuItems._delObject(menuId)
+                    except Exception, e:
+                        log.error("Unable to remove menu %s" % menuId)
+                        log.exception(e)
+
 EuropaRemoveZenPackCreateDelete()
 
