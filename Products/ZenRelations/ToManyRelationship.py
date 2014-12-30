@@ -70,7 +70,7 @@ class ToManyRelationship(ToManyRelationshipBase):
         def get(connection, cursor):
             sql = "SELECT remote_uid from relations where uid=%s and name=%s"
             cursor.execute(sql, (myId, self.id))
-            return cursor.fetchall()
+            return [x[0] for x in cursor.fetchall()]
         return doSelect(get)
 
     def manage_pasteObjects(self, cb_copy_data=None, REQUEST=None):
