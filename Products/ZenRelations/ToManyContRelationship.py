@@ -108,7 +108,7 @@ class ToManyContRelationship(ToManyRelationship):
                       self.getPrimaryId())
 
         notify(ObjectWillBeAddedEvent(obj, self, obj.getId()))
-        super(ToManyContRelationship, self).addRelation(self, obj)
+        super(ToManyContRelationship, self).addRelation(obj)
         obj = obj.__of__(self)
         o = self._getOb(obj.id)
         notify(ObjectAddedEvent(o, self, o.getId()))
