@@ -97,7 +97,7 @@ class ToManyContRelationship(ToManyRelationship):
         this will fail if passed a short id and object is stored
         with fullid (ie: it is related not contained)
         use hasobject to get around this issue"""
-        parentId = self.__primary_parent__.getPrimaryId()
+        parentId = self.parentId()
         uids = self.getRemoteUids()
         return '/'.join((parentId, self.id, name)) in uids
 

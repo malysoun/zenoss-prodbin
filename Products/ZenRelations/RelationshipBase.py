@@ -134,6 +134,10 @@ class RelationshipBase(PrimaryPathManager):
         """Don't let relationships move off their managers"""
         return 0
 
+    def parentId(self):
+        id = self.__primary_parent__.getPrimaryId()
+        return id if id.startswith('/zport/') else '/zport/' + id
+
     def _remoteRemove(self, obj=None):
         raise NotImplementedError
 

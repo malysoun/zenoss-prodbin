@@ -66,7 +66,7 @@ class ToManyRelationship(ToManyRelationshipBase):
         self._count = len(self.getRemoteUids())
 
     def getRemoteUids(self):
-        myId = self.__primary_parent__.getPrimaryId()
+        myId = self.parentId()
         def get(connection, cursor):
             sql = "SELECT remote_uid from relations where uid=%s and name=%s"
             cursor.execute(sql, (myId, self.id))
@@ -81,7 +81,7 @@ class ToManyRelationship(ToManyRelationshipBase):
     def _add(self, obj):
         """add an object to a relationship.
         if a relationship already exists, error"""
-        myId = self.__primary_parent__.getPrimaryId()
+        myId = self.parentId()
         uid = obj.getPrimaryId()
 
         #if obj == self.obj: raise RelationshipExistsError
@@ -98,7 +98,7 @@ class ToManyRelationship(ToManyRelationshipBase):
         self._count = None
 
     def _dbRemoveByUid(self, uidsToRemove=()):
-        myId = self.__primary_parent__.getPrimaryId()
+        myId = self.parentId()
 
         def delete(connection, cursor):
             sql = "DELETE FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
@@ -113,7 +113,7 @@ class ToManyRelationship(ToManyRelationshipBase):
 
     def _remove(self, obj=None, suppress_events=False):
         #find our current objects
-        myId = self.__primary_parent__.getPrimaryId()
+        myId = self.parentId()
         uid = obj.getPrimaryId()
 
         if obj:

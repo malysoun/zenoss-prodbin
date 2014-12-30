@@ -66,14 +66,14 @@ class ToOneRelationship(RelationshipBase):
     def getRemoteUid(self):
         def get(connection, cursor):
             sql = "SELECT remote_uid from relations where uid=%s and name=%s"
-            cursor.execute(sql, (self.__primary_parent__.getPrimaryId(), self.id))
-            return cursor.fetchone()
+            cursor.execute(sql, (self.parentId(), self.id))
+            return cursor.fetchone()[0]
         return doSelect(get)
 
     def _add(self, obj):
         """add a to one side of a relationship
         if a relationship already exists clear it"""
-        myId = self.__primary_parent__.getPrimaryId()
+        myId = self.parentId()
         uid = obj.getPrimaryId()
 
         #if obj == self.obj: raise RelationshipExistsError
@@ -93,7 +93,7 @@ class ToOneRelationship(RelationshipBase):
 
     def _remove(self, obj=None, suppress_events=False):
         #find our current object
-        myId = self.__primary_parent__.getPrimaryId()
+        myId = self.parentId()
         uid = self.getRemoteUid()
         if uid:
             if obj.getPrimaryId() != uid:
