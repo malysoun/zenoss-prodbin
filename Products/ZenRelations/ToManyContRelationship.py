@@ -6,8 +6,6 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 # 
 ##############################################################################
-from Products.ZenRelations import ToManyRelationship
-
 __doc__ = """ToManyContRelationship
 A to-many container relationship
 """
@@ -32,6 +30,7 @@ from BTrees.OOBTree import OOBTree
 from Exceptions import zenmarker
 
 from Products.ZenUtils.Utils import unused
+from Products.ZenRelations.ToManyRelationship import ToManyRelationship
 
 def manage_addToManyContRelationship(context, id, REQUEST=None):
     """factory for ToManyRelationship"""
@@ -54,7 +53,6 @@ class ToManyContRelationship(ToManyRelationship):
     meta_type = "ToManyContRelationship"
 
     security = ClassSecurityInfo()
-
 
     def __init__(self, id):
         """set our instance values"""
@@ -109,7 +107,6 @@ class ToManyContRelationship(ToManyRelationship):
 
         notify(ObjectWillBeAddedEvent(obj, self, obj.getId()))
         super(ToManyContRelationship, self).addRelation(obj)
-        obj = obj.__of__(self)
         o = self._getOb(obj.id)
         notify(ObjectAddedEvent(o, self, o.getId()))
 
