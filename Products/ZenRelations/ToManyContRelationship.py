@@ -141,7 +141,7 @@ class ToManyContRelationship(ToManyRelationship):
         id = obj.id
         checkValidId(self, id)
 
-        super(ToManyContRelationship, self)._add()
+        super(ToManyContRelationship, self)._add(obj)
 
         self._objects[id] = aq_base(obj)
 
