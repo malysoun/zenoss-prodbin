@@ -21,8 +21,7 @@ from Globals import InitializeClass
 from Acquisition import aq_base
 from zope import interface
 
-from Products.Zuul.decorators import memoize
-from Products.Zuul.utils import safe_hasattr
+from utils import memoize
 from Products.ZenRelations.Exceptions import *
 from Products.ZenRelations.utils import importClass
 
@@ -93,7 +92,7 @@ class RelationshipBase(PrimaryPathManager):
                                   obj.id, obj.__class__.__name__))
 
         # make sure remote rel is on this obj
-        if not safe_hasattr(aq_base(obj), self.remoteName()):
+        if not hasattr(aq_base(obj), self.remoteName()):
             raise ZenRelationsError("Remote object %s does not have reciprocal relationship %s" %
                                     (obj.getPrimaryId(), self.remoteName()))
 
