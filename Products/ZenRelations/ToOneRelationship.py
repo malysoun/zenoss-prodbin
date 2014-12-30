@@ -70,17 +70,6 @@ class ToOneRelationship(RelationshipBase):
             return cursor.fetchone()
         return doSelect(get)
 
-    def hasobject(self, obj):
-        """does this relation point to the object passed"""
-        myId = self.__primary_parent__.getPrimaryId()
-        uid = obj.getPrimaryId()
-
-        def get(connection, cursor):
-            #return self.obj == obj
-            sql = "SELECT COUNT(*) FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
-            return cursor.execute(sql, (myId, self.id, uid)).result
-        return doSelect(get)
-
     def _add(self, obj):
         """add a to one side of a relationship
         if a relationship already exists clear it"""

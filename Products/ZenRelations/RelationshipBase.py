@@ -6,6 +6,7 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 # 
 ##############################################################################
+from Products.ZenRelations.RelationshipUtils import doSelect
 
 
 __doc__ = """RelationshipBase
@@ -132,6 +133,18 @@ class RelationshipBase(PrimaryPathManager):
     def cb_isMoveable(self):
         """Don't let relationships move off their managers"""
         return 0
+
+    def hasobject(self, obj):
+        """does this relation point to the object passed"""
+        myId = self.__primary_parent__.getPrimaryId()
+        uid = obj.getPrimaryId()
+
+        def get(connection, cursor):
+            sql = "SELECT COUNT(*) FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
+            cursor.execute(sql, (myId, self.id, uid))
+            return bool(cursor.fetchone()[0])
+        return doSelect(get)
+
 
 
 InitializeClass(RelationshipBase)

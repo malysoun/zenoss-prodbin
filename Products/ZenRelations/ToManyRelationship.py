@@ -73,17 +73,6 @@ class ToManyRelationship(ToManyRelationshipBase):
             return cursor.fetchall()
         return doSelect(get)
 
-    def hasobject(self, obj):
-        """does this relation point to the object passed"""
-        #return self.obj == obj
-        myId = self.__primary_parent__.getPrimaryId()
-        uid = obj.getPrimaryId()
-
-        def get(connection, cursor):
-            sql = "SELECT COUNT(*) FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
-            return bool(cursor.execute(sql, (myId, self.id, uid)).fetchone())
-        return doSelect(get)
-
     def manage_pasteObjects(self, cb_copy_data=None, REQUEST=None):
         """ToManyRelationships link instead of pasting"""
         return self.manage_linkObjects(cb_copy_data=cb_copy_data,
