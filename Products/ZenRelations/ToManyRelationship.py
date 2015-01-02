@@ -100,9 +100,9 @@ class ToManyRelationship(ToManyRelationshipBase):
     def _remove(self, obj=None, suppress_events=False):
         #find our current objects
         myId = self.parentId()
-        uid = obj.getPrimaryId()
 
         if obj:
+            uid = obj.getPrimaryId()
             if not self.hasobject(obj):
                 raise ObjectNotFound("object %s was not found on relation %s" %
                                      (uid, self))

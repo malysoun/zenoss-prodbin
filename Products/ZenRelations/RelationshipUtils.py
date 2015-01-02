@@ -14,7 +14,7 @@ def _storeFunction():
     """
     from Globals import DB
 
-    return DB.storage._with_store
+    return DB.storage._with_rel
 
 
 @memoize
@@ -24,7 +24,7 @@ def _loadFunction():
     """
     from Globals import DB
 
-    return DB.storage._with_store
+    return DB.storage._with_rel
 
 
 def doUpdate(f):
