@@ -93,7 +93,6 @@ class ToOneRelationship(RelationshipBase):
 
     def _remove(self, obj=None, suppress_events=False):
         #find our current object
-        myId = self.parentId()
         uid = self.getRemoteUid()
         if uid:
             if obj.getPrimaryId() != uid:
@@ -102,11 +101,7 @@ class ToOneRelationship(RelationshipBase):
             # if obj == None or obj == self.obj:
             #     self.obj = None
             #     self.__primary_parent__._p_changed = True
-            def delete(connection, cursor):
-                sql = "DELETE FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
-                cursor.executemany(sql, ((myId, self.id, uid),
-                                         (uid, self.remoteName(), myId)))
-            doDelete(delete)
+            self._dbRemoveByUid(uid)
 
     security.declareProtected('View', 'getRelatedId')
 

@@ -97,20 +97,6 @@ class ToManyRelationship(ToManyRelationshipBase):
         doInsert(put)
         self._count = None
 
-    def _dbRemoveByUid(self, uidsToRemove=()):
-        myId = self.parentId()
-
-        def delete(connection, cursor):
-            sql = "DELETE FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
-            cursor.executemany(sql,
-                               itertools.chain(
-                                   ((myId, self.id, uid) for uid in uidsToRemove),
-                                   ((uid, self.remoteName(), myId) for uid in uidsToRemove)
-                               ))
-
-        self._count = None
-        return doDelete(delete)
-
     def _remove(self, obj=None, suppress_events=False):
         #find our current objects
         myId = self.parentId()
@@ -126,6 +112,7 @@ class ToManyRelationship(ToManyRelationshipBase):
 
         if uidsToRemove:
             self._dbRemoveByUid(uidsToRemove)
+            self._count = None
 
     def _setObject(self, id, object, roles=None, user=None, set_owner=1):
         """Set and object onto a ToMany by calling addRelation"""

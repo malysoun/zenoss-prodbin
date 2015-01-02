@@ -6,7 +6,8 @@
 # License.zenoss under the directory where your Zenoss product is installed.
 # 
 ##############################################################################
-from Products.ZenRelations.RelationshipUtils import doSelect
+import itertools
+from Products.ZenRelations.RelationshipUtils import doSelect, doDelete
 
 
 __doc__ = """RelationshipBase
@@ -150,6 +151,19 @@ class RelationshipBase(PrimaryPathManager):
             cursor.execute(sql, (myId, self.id, uid))
             return bool(cursor.fetchone()[0])
         return doSelect(get)
+
+    def _dbRemoveByUid(self, uidsToRemove=()):
+        myId = self.parentId()
+
+        def delete(connection, cursor):
+            sql = "DELETE FROM relations WHERE uid=%s AND name=%s AND remote_uid=%s"
+            return cursor.executemany(sql,
+                                      itertools.chain(
+                                           ((myId, self.id, uid) for uid in uidsToRemove),
+                                           ((uid, self.remoteName(), myId) for uid in uidsToRemove)
+                                      ))
+        return doDelete(delete)
+
 
 
 
