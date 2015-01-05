@@ -136,7 +136,7 @@ class ToManyContRelationship(ToManyRelationship):
         """add an object to a relationship.
         if a relationship already exists, error"""
         id = obj.id
-        checkValidId(self, id)
+        checkValidId(self, id, 1)
 
         super(ToManyContRelationship, self)._add(obj)
 
