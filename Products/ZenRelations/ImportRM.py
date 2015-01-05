@@ -501,7 +501,7 @@ for a ZenPack.
         trans.note('Import from file %s using %s'
                     % (self.options.infile, self.__class__.__name__))
         trans.commit()
-        if hasattr(self, 'connection'):
+        if hasattr(self, 'connection') and self.connection:
             # It's safe to call syncdb()
             self.syncdb()
 
