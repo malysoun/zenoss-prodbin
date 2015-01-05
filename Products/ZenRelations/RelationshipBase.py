@@ -98,7 +98,7 @@ class RelationshipBase(PrimaryPathManager):
                                     (obj.getPrimaryId(), self.remoteName()))
 
         try:
-            self._add(obj.getPrimaryId())
+            self._add(obj)
         except RelationshipExistsError:
             log.debug("obj %s already exists on %s", obj.getPrimaryId(),
                       self.getPrimaryId())

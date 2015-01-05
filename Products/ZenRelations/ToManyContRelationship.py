@@ -99,7 +99,7 @@ class ToManyContRelationship(ToManyRelationship):
         uids = self.getRemoteUids()
         return '/'.join((parentId, self.id, name)) in uids
 
-     def addRelation(self, obj):
+    def addRelation(self, obj):
         """Override base to run manage_afterAdd like ObjectManager"""
         if self.hasobject(obj):
             log.debug("obj %s already exists on %s", obj.getPrimaryId(),
