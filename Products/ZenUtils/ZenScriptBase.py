@@ -19,8 +19,9 @@ from zope.component import getUtility
 from AccessControl.SecurityManagement import newSecurityManager
 from AccessControl.SecurityManagement import noSecurityManager
 from transaction import commit
-from Products.ZenUtils.Utils import getObjByPath, zenPath, set_context
+from Products.ZenUtils.Utils import getObjByPath, zenPath
 from Products.ZenUtils.CmdBase import CmdBase
+from Products.ZenUtils.ZeoConn import ZeoConn
 from Products.ZenUtils.ZodbFactory import IZodbFactoryLookup
 
 from Products.ZenRelations.ZenPropertyManager import setDescriptors
@@ -28,29 +29,30 @@ from Products.ZenUtils.Exceptions import ZentinelException
 
 defaultCacheDir = zenPath('var')
 
-class DataRootError(Exception):pass
 
-class ZenScriptBase(CmdBase):
+class DataRootError(Exception):
+    pass
+
+
+class ZenScriptBase(CmdBase, ZeoConn):
 
     def __init__(self, noopts=0, app=None, connect=False):
         CmdBase.__init__(self, noopts)
-        self.dataroot = None
+        ZeoConn.__init__(self)
+        self.dataroot = self.dmd = None
         self.app = app
-        self.db = None
         if connect:
-            self.connect()
+            self.connect(self.options)
 
-    def connect(self):
-        if not self.app:
-            connectionFactory = getUtility(IZodbFactoryLookup).get()
-            self.db, self.storage = connectionFactory.getConnection(**self.options.__dict__)
+    def connect(self, **kwargs):
+        ZeoConn.connect(self, **kwargs)
+        self.opendb()
         self.getDataRoot()
         self.login()
         if getattr(self.dmd, 'propertyTransformers', None) is None:
             self.dmd.propertyTransformers = {}
             commit()
         setDescriptors(self.dmd)
-
 
     def login(self, name='admin', userfolder=None):
         """Logs in."""
@@ -62,11 +64,9 @@ class ZenScriptBase(CmdBase):
             user = user.__of__(userfolder)
         newSecurityManager(None, user)
 
-
     def logout(self):
         """Logs out."""
         noSecurityManager()
-
 
     def getConnection(self):
         """Return a wrapped app connection from the connection pool.
@@ -75,58 +75,24 @@ class ZenScriptBase(CmdBase):
             raise ZentinelException(
                 "running inside zope can't open connections.")
         with self.poollock:
-            connection=self.db.open()
-            root=connection.root()
-            app=root['Application']
-            app = set_context(app)
-            app._p_jar.sync()
-            return app
-
-
-    def closeAll(self):
-        """Close all connections in both free an inuse pools.
-        """
-        self.db.close()
-
-
-    def opendb(self):
-        if self.app: return 
-        self.connection=self.db.open()
-        root=self.connection.root()
-        app = root['Application']
-        self.app = set_context(app)
-        self.app._p_jar.sync()
-
-
-    def syncdb(self):
-        self.connection.sync()
-
-
-    def closedb(self):
-        self.connection.close()
-        #self.db.close()
-        self.app = None
-        self.dataroot = None
-        self.dmd = None
-
+            return self.getApp()
 
     def getDataRoot(self):
-        if not self.app: self.opendb()
-        if not self.dataroot:
+        if not self.app:
+            self.opendb()
+        if not self.dataroot or not self.dmd:
             self.dataroot = getObjByPath(self.app, self.options.dataroot)
             self.dmd = self.dataroot
-
+        return self.dmd
 
     def getDmdObj(self, path):
         """return an object based on a path starting from the dmd"""
         return getObjByPath(self.app, self.options.dataroot+path)
 
-
     def findDevice(self, name):
         """return a device based on its FQDN"""
         devices = self.dataroot.getDmdRoot("Devices")
         return devices.findDevice(name)
-
 
     def buildOptions(self):
         """basic options setup sub classes can add more options here"""

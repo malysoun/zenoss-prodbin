@@ -107,15 +107,17 @@ class ZenDocTestRunner(object):
 
         if not self.conn:
             adapter_config = self._find_relstorage_adapter_config()
+            self.conn = ZeoConn()
             if adapter_config:
-                self.conn = ZeoConn(zodb_host=adapter_config.host,
-                                    zodb_port=adapter_config.port,
-                                    zodb_user=adapter_config.user,
-                                    zodb_password=adapter_config.passwd,
-                                    zodb_db=adapter_config.db,
-                                    zodb_socket=adapter_config.unix_socket)
+                self.conn.connect(zodb_host=adapter_config.host,
+                                  zodb_port=adapter_config.port,
+                                  zodb_user=adapter_config.user,
+                                  zodb_password=adapter_config.passwd,
+                                  zodb_db=adapter_config.db,
+                                  zodb_socket=adapter_config.unix_socket)
             else:
-                self.conn = ZeoConn()
+                self.conn.connect()
+            self.conn.opendb()
 
         self.app = self.conn.app
         self.login()
