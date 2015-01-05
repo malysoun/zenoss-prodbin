@@ -15,11 +15,12 @@ def cleanUpRelationships(ob, event):
     """
     Unlinks non-container relationships when their targets are being deleted.
     """
-    if getattr(event.object, "_operation", -1) < 1:
-        # Don't bother in the case where the other side is a container.
-        if not (isinstance(ob, ToOneRelationship) and
-            ob.remoteTypeName() == 'ToManyCont'):
-            ob._remoteRemove()
+    # if getattr(event.object, "_operation", -1) < 1:
+    #     # Don't bother in the case where the other side is a container.
+    #     if not (isinstance(ob, ToOneRelationship) and
+    #         ob.remoteTypeName() == 'ToManyCont'):
+    #         ob._remoteRemove()
+    pass
 
 
 def resetUnderscoreOperation(ob, event):
