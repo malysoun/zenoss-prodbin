@@ -55,6 +55,3 @@ class ZeoConn(object):
         """Close all connections in both free an inuse pools.
         """
         self.db.close()
-
-    def syncdb(self):
-        self.connection.sync()
