@@ -7,24 +7,22 @@
 from Products.ZenRelations.utils import memoize
 
 
-@memoize
 def _storeFunction():
     """
     Wrapper function to import DB at run-time
     """
     from Globals import DB
 
-    return DB.storage._with_rel
+    return DB.storage._with_store
 
 
-@memoize
 def _loadFunction():
     """
     Wrapper function to import DB at run-time
     """
     from Globals import DB
 
-    return DB.storage._with_rel
+    return DB.storage._with_store
 
 
 def doUpdate(f):
