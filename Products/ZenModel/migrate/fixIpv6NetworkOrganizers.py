@@ -23,6 +23,7 @@ class fixIpv6Network(Migrate.Step):
 
     def cutover(self, dmd):
         if hasattr(dmd, 'IPv6Networks'):
+            dmd.IPv6Networks.dmdRootName = "IPv6Networks"
             for brain in ICatalogTool(dmd.IPv6Networks).search(IpNetwork):
                 try:
                     org = brain.getObject()
